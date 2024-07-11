@@ -38,6 +38,49 @@ async function run() {
     const enrolledCollection = database.collection("enrolled");
     const appliedCollection = database.collection("applied");
 
+    //routes for userr
+    app.post('/new-user',async(req,res)=>{
+      const newUser=req.body;
+      const result= await userCollection.insertOne(newUser)
+      res.send(result)
+    })
+
+    app.get('/users/:id',async(req,res)=>{
+      const id = req.params.id;
+      const query= {_id:new ObjectId(id)};
+      const result = await userCollection.findOne(query)
+      res.send(result)
+    })
+    app.delete('/delete-user/:id',async(req,res)=>{
+      const id = req.params.id;
+      const query={_id:new ObjectId(id)};
+      const result = await userCollection.deleteOne(query)
+      res.send(result)
+    })
+
+    app.put('/update-user/:id',async(req,res)=>{
+      const id = req.params.id;
+      const updatedUser=req.body;
+      const query={_id:new ObjectId(id)};
+      const options ={uupsert: true};
+      const updateDoc={
+        $set:{
+          name:updatedUser.name,
+          email:updatedUser.email,
+          role:updatedUser.option,
+          address:updatedUser.address,
+          about:updatedUser.about,
+          photoUrl:updatedUser.skills?updatedUser.skills:null,
+
+        }
+      }
+      const result = await userCollection.updateOne(filter,updateDoc,options)
+      res.send(result)
+    })
+
+
+    
+
     //classes routes 
     app.post('/new-class', async (req, res) => {
       const newClass = req.body;
@@ -285,7 +328,65 @@ async function run() {
 
     })
 
+    app.get('/enrolled-classes/:email',async (req,res)=>{
+      const email= req.params.email;
+      const query={userEmail:email}
+      const pipeline=[
+        {
+          $match :query
+        },
+        {
+          $lookup:{
+            from:"classes",
+            localField:"classesId",
+            foreignField:"_id",
+            as:"classes"
+          }
+        },{
+          $unwind:"$classes"
+        },
+        {
+          $lookup:{
+            from:"users",
+            localField:"classes.instructorEmail",
+            foreignField:"email",
+            as:"instructor"
+          }
+        },{
+          $project:{
+            _id:0,
+            instructor:{
+              $arrayElemAt:["$instructor",0]
+            },
+            classes:1
+          }
+        }
+      ];
+
+      const result = await enrolledCollection.aggregate(pipeline).toArray();
+      res.send(result)
+    })
+
+    //applied for instructors
+    app.post('/ass-instructor',async(req,res)=>{
+      const data = req.body;
+      const result= await appliedCollection.insertOne(data);
+      res.send(result)
+    });
+
+    app.get('/applied-instructors/:email',async(req,res)=>{
+      const email= req.params.email;
+      const result= await appliedCollection.findOne({email});
+      res.send(result)
+    })
+
+
     //get all instructors
+    app.get('/instructors',async(req,res)=>{
+      const result= await userCollection.find({role:'instructor'}).toArray()
+      res.send(result)
+    })
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
