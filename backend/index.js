@@ -222,7 +222,70 @@ async function run() {
     })
 
     //Enrollment routes 
+    app.get('/popular-classes',async(req,res)=>{
+      const result= await classCollection.find().sort({totalEnrolled:-1}.limit(6).toArray())
+      res.send(result)
+    })
+
+    app.get('/popular-instructors',async(req,res)=>{
+      const pipeline=[
+        {
+          $group:{
+            _id:"$instructorEmail",
+            totalEnrolled:{$sum:'$totalEnrolled'}
+          }
+        },
+        {
+          $lookup:{
+            from:"users",
+            localField:"_id",
+            foreignField:"email",
+            as:"instructor"
+          }
+        },
+        {
+          $project:{
+            _id:0,
+            instructor:{
+              $arrayElemAt:["$instructor",0]
+            },
+            totalEnrolled:1
+          }
+        },
+        {
+          $sort:{
+            totalEnrolled:-1
+          }
+        },
+        {
+          $limit:6
+        }
+      ];
+      const result = await classCollection.aggregate(pipeline).toArray();
+      res.send(result)
+    })
+
     
+    //admin status
+    app.get('/admin-stats',async(req,res)=>{
+      const approvedClass=((await classCollection.find({status:'approved'})).toArray()).length;
+      const pendingClass=((await classCollection.find({status:'pending'})).toArray()).length;
+      const instructors=((await userCollection.find({role:'instructor'})).toArray()).length;
+      const totalClasses=(await classCollection.find().toArray()).length;
+      const totalEnrolled=(await enrolledCollection.find().toArray()).length;
+
+      const result={
+        approvedClass,
+        pendingClass,
+        instructors,
+        totalClasses,
+        totalEnrolled 
+      }
+      res.send(result);
+
+    })
+
+    //get all instructors
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
