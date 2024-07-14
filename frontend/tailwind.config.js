@@ -4,8 +4,14 @@ export default {
     "./index.html",
     "./src/**/*.{vue,js,ts,jsx,tsx}",
   ],
+  darkMode:'class',
   theme: {
-    extend: {},
+    extend: {
+      colors:{
+      'primary':'#b68bdcb1',
+      'secondary':'#2E4CFF',
+    }
+    },
   },
   plugins: [],
 }
