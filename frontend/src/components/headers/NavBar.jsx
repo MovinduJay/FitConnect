@@ -67,7 +67,7 @@ const NavBar = () => {
     useEffect(() => {
         if (scrollPosition > 100) {
             if (isHome) {
-                setNavBg('bg-white backdrop-filter backdrop-blur-x1 bg-opacity-0 dark:text-white text-black')
+                setNavBg('bg-white backdrop-filter backdrop-blur-xl bg-opacity-0 dark:text-white text-black')
             }
             else {
                 setNavBg('bg-white dark:bg-black dark:text-white text-black')

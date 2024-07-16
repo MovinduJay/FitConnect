@@ -1,12 +1,16 @@
 import React from 'react'
 import Hero from './Hero/Hero'
 import HeroContainer from './Hero/HeroContainer'
+import Gallery from './Gallery/Gallery'
 
 const Home = () => {
   return (
-    <div>
+    <section>
       <HeroContainer/>
-    </div>
+      <div className='max-w-screen-x1 mx-auto'>
+        <Gallery/>
+      </div>
+    </section>
   )
 }
 
