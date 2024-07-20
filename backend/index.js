@@ -10,11 +10,9 @@ const jwt= require('jsonwebtoken')
 app.use(cors());
 app.use(express.json());
 
-
-
 //mongodb connection
 
-const { MongoClient, ServerApiVersion, ObjectId, deserialize } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId} = require('mongodb');
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@fit-connect.qzxdufx.mongodb.net/?appName=fit-connect`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -34,7 +32,7 @@ async function run() {
     //create a database and collections
     const database = client.db("fit-connect");
     const userCollection = database.collection("users");
-    const classCollection = database.collection("classes");
+    const classesCollection = database.collection("classes");
     const cartCollection = database.collection("cart");
     const paymentsCollection = database.collection("payments");
     const enrolledCollection = database.collection("enrolled");
@@ -91,8 +89,6 @@ async function run() {
       }
     }
 
-     
-
 
     app.post('/new-user',async(req,res)=>{
       const newUser=req.body;
@@ -148,13 +144,13 @@ async function run() {
     app.post('/new-class',verifyJWT,verifyInstructor, async (req, res) => {
       const newClass = req.body;
       //newClass.availableSeats=parseInt(newClass.availableSeats);
-      const result = await classCollection.insertOne(newClass);
+      const result = await classesCollection.insertOne(newClass);
       res.send(result);
     })
 
      app.get('/classes',async (req,res)=>{
       const query ={title:"approved"};
-      const result = await classCollection.find().toArray();
+      const result = await classesCollection.find().toArray();
       res.send(result);
      })
 
@@ -168,7 +164,7 @@ async function run() {
 
      //manage classes 
      app.get('/classes-manage',async(req,res)=>{
-      const result= await classCollection.find().toArray();
+      const result= await classesCollection.find().toArray();
       res.send(result);
      })
 
@@ -185,14 +181,14 @@ async function run() {
            reason:reason,
         },
       } ;
-      const result= await classCollection.updateOne(filter,updateDoc,options)
+      const result= await classesCollection.updateOne(filter,updateDoc,options)
       res.send (result);
      })
 
      //get approved classes
      app.get('/approved-classes',async(req,res)=>{
       const query ={status:'approved'};
-      const result= await classCollection.find(query).toArray();
+      const result= await classesCollection.find(query).toArray();
       res.send(result);
      })
 
@@ -200,7 +196,7 @@ async function run() {
      app.get('/class/:id',async(req,res)=>{
       const id = req.params.id;
       const query ={_id: new ObjectId(id)};
-      const result = await classCollection.findOne(query);
+      const result = await classesCollection.findOne(query);
       res.send(result);
      })
 
@@ -220,7 +216,7 @@ async function run() {
           status:'pending',
         }
       }
-      const result= await classCollection.updateOne(filter,updateDoc,options);
+      const result= await classesCollection.updateOne(filter,updateDoc,options);
       res.send(result)
      })
 
@@ -252,7 +248,7 @@ async function run() {
       const carts = await cartCollection.find(query,{projection:projection})
       const classIds=carts.map((cart)=>new ObjectId(cart.classId));
       const query2={_id:{$in:classIds}};
-      const result = await classCollection.find(query2).toArray();
+      const result = await classesCollection.find(query2).toArray();
       res.send(result)
      })
 
@@ -291,7 +287,7 @@ async function run() {
       }
 
       const classesQuery = {_id:{$in:classesId.map(id=>new ObjectId(id))}}
-      const classes = await classCollection.find(classesQuery).toArray()
+      const classes = await classesCollection.find(classesQuery).toArray()
       const newEnrolledData={
         userEmail: userEmail,
         classId:singleClassId.map(id=>new ObjectId(id)),
@@ -304,7 +300,7 @@ async function run() {
           availableSeats:classes.reduce((total,current)=> total+current.availableSeats,0)-1||0
         }
       }
-      const updatedResult= await classCollection.updateMany(classesQuery,updatedDoc,{upsert:true})
+      const updatedResult= await classesCollection.updateMany(classesQuery,updatedDoc,{upsert:true})
       const enrolledResult= await enrolledCollection.insertOne(newEnrolledData);
       const deletedResult = await cartCollection.deleteMany(query);
       const paymentResult= await paymentsCollection.insertOne(paymentInfo)
@@ -329,7 +325,7 @@ async function run() {
 
     //Enrollment routes 
     app.get('/popular-classes',async(req,res)=>{
-      const result= await classCollection.find().sort({totalEnrolled:-1}.limit(6).toArray())
+      const result= await classesCollection.find().sort({totalEnrolled:-1}.limit(6).toArray())
       res.send(result)
     })
 
@@ -338,16 +334,16 @@ async function run() {
         {
           $group:{
             _id:"$instructorEmail",
-            totalEnrolled:{$sum:'$totalEnrolled'}
-          }
+            totalEnrolled:{$sum:'$totalEnrolled'},
+          },
         },
         {
           $lookup:{
             from:"users",
             localField:"_id",
             foreignField:"email",
-            as:"instructor"
-          }
+            as:"instructor",
+          },
         },
         {
           $project:{
@@ -355,29 +351,29 @@ async function run() {
             instructor:{
               $arrayElemAt:["$instructor",0]
             },
-            totalEnrolled:1
-          }
+            totalEnrolled:1,
+          },
         },
         {
           $sort:{
-            totalEnrolled:-1
-          }
+            totalEnrolled:-1,
+          },
         },
         {
-          $limit:6
-        }
+          $limit:6,
+        },
       ];
-      const result = await classCollection.aggregate(pipeline).toArray();
+      const result = await classesCollection.aggregate(pipeline).toArray();
       res.send(result)
     })
 
     
     //admin status
     app.get('/admin-stats',verifyJWT,verifyAdmin,async(req,res)=>{
-      const approvedClass=((await classCollection.find({status:'approved'})).toArray()).length;
-      const pendingClass=((await classCollection.find({status:'pending'})).toArray()).length;
+      const approvedClass=((await classesCollection.find({status:'approved'})).toArray()).length;
+      const pendingClass=((await classesCollection.find({status:'pending'})).toArray()).length;
       const instructors=((await userCollection.find({role:'instructor'})).toArray()).length;
-      const totalClasses=(await classCollection.find().toArray()).length;
+      const totalClasses=(await classesCollection.find().toArray()).length;
       const totalEnrolled=(await enrolledCollection.find().toArray()).length;
 
       const result={
