@@ -346,6 +346,11 @@ async function run() {
           },
         },
         {
+          $match: {
+            "instructor.role":"instructor",
+          }
+        },
+        {
           $project:{
             _id:0,
             instructor:{
